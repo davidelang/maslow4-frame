@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+   <style>
+      .parentContainer {
+         width: 100%;
+         height: 100%;
+      }
+      svg {
+         width: 100%;
+         height: 100%;
+      }
+   </style>
+  <script>
+// Written by David Lang david@lang.hm Free for anyone to copy and use for any purpose
+// This is designed to show the area that a stock Maslow 4 (maslowcnc.com) can reach from a given set of anchor points.
+      var frame = { x:3048, y:2440, mid_x:1524, mid_y:1220 };
+      var workpiece = { x:2440, y:1220 };
+      var angles = [
+        { name:"from Bar", min_top:40, min_side:40, min_corner:130 },
+        { name:"from CAD", min_top:38.7, min_side:38.7, min_corner:128.7 },
+        { name:"clipped ears", min_top:27.5, min_side:38.7, min_corner:123.07 },
+        { name:"Custom", min_top:40, min_side:40, min_corner:130 }
+    ];
+
+  function init() {
+    document.getElementById('f_x').defaultValue = frame.x;
+    document.getElementById('f_y').defaultValue = frame.y;
+    document.getElementById('w_x').defaultValue = workpiece.x;
+    document.getElementById('w_y').defaultValue = workpiece.y;
+    select = document.getElementById("angle_option");
+    for (let i=0; i < angles.length; i++) {
+      let optn = angles[i].name
+      let el = document.createElement("option");
+      el.textContent = optn;
+      el.value = i;
+      select.appendChild(el);
+    }
+    //select.value=0;
+    update();
+  }
+
+  function update() {
+   // set the frame size
+    root = document.getElementById("frame_box");
+    root.viewBox.baseVal.x = 0;
+    root.viewBox.baseVal.y = 0;
+    root.viewBox.baseVal.width = frame.x;
+    root.viewBox.baseVal.height = frame.y;
+    frame.x = parseFloat(document.getElementById("f_x").value);
+    frame.y = parseFloat(document.getElementById("f_y").value);
+    workpiece.x = parseFloat(document.getElementById("w_x").value);
+    workpiece.y = parseFloat(document.getElementById("w_y").value);
+    document.getElementById('frame_box').setAttribute("width", frame.x);
+    document.getElementById('frame_box').setAttribute("height", frame.y);
+    document.getElementById('frame_x').innerHTML = frame.x;
+    document.getElementById('frame_y').innerHTML = frame.y;
+    // calculate what areas can and can't be reached
+    min_top =angles[select.value].min_top/2;
+    min_side =angles[select.value].min_side/2;
+    min_corner =angles[select.value].min_corner;
+    document.getElementById("angles").innerHTML = "top " + min_top + "  side " +min_side+ "  corner "+min_corner;
+    frame_diag=Math.sqrt(frame.x*frame.x+frame.y*frame.y);
+    frame_diag_angle = Math.atan(frame.x/frame.y)*180/Math.PI;
+    side_offset = Math.tan(min_top*Math.PI/180)*frame.y/2;
+    top_offset = Math.tan(min_side*Math.PI/180)*frame.x/2;
+    side_slope = 1/Math.cos(min_top*Math.PI/180)*frame.y/2;
+    top_slope = 1/Math.cos(min_side*Math.PI/180)*frame.x/2;
+    corner_slope = 1/Math.cos((180-min_corner)/2*Math.PI/180)*frame_diag/2;
+    corner_triangle_height = Math.tan((180-min_corner)/2*Math.PI/180)*frame_diag/2;
+    side_radius = (side_slope * side_slope * frame.y)/Math.sqrt((side_slope*2+frame.y)*(side_slope*2-frame.y)*frame.y*frame.y);
+    top_radius = (top_slope * top_slope * frame.x)/ Math.sqrt( ((top_slope * 2) + frame.x) * ((top_slope * 2) - frame.x) * frame.x * frame.x );
+    corner_radius = (corner_slope * corner_slope * frame_diag)/Math.sqrt((corner_slope*2+frame_diag)*(corner_slope*2-frame_diag)*frame_diag*frame_diag);
+    side_cir_offset = frame.x/2 - side_offset + side_radius;
+    top_cir_offset = frame.y/2 - top_offset + top_radius;
+    corner_cir_offset_x = Math.cos(frame_diag_angle*Math.PI/180)*(corner_radius - corner_triangle_height);
+    corner_cir_offset_y = Math.sin(frame_diag_angle*Math.PI/180)*(corner_radius - corner_triangle_height);
+    document.getElementById("max_workpiece").innerHTML = "Mas safe width: "+Math.round((frame.x-2*side_offset)*100)/100+ "   Max safe height: " + Math.round((frame.y-2*top_offset)*100)/100 +"  it is probably not possible to hit both max sizes at the same time"
+    //plot the graph, first plot each quadrent to check what area is reachable with the min corner angle from opposite corners
+    // then plot the 4 areas that are not reachable on the edges due to the arms being limited in how wide they can go.
+    var frame_graph = `
+      <clipPath id="q1">
+      <rect width="`+frame.x/2+`" height="`+frame.y/2+`" x="0" y="`+frame.y/2+`" />
+      </clipPath>
+      <clipPath id="q2">
+      <rect width="`+frame.x/2+`" height="`+frame.y/2+`" x="`+frame.x/2+`" y="`+frame.y/2+`" />
+      </clipPath>
+      <clipPath id="q3">
+      <rect width="`+frame.x/2+`" height="`+frame.y/2+`" x="0" y="0" />
+      </clipPath>
+      <clipPath id="q4">
+      <rect width="`+frame.x/2+`" height="`+frame.y/2+`" x="`+frame.x/2+`" y="0" />
+      </clipPath>
+      <circle cx="`+ (frame.x/2 + corner_cir_offset_x) +`" cy="`+ (frame.y/2 - corner_cir_offset_y) +`" r="`+corner_radius+`" fill="green" clip-path="url(#q1)" ></circle>
+      <circle cx="`+ (frame.x/2 - corner_cir_offset_x) +`" cy="`+ (frame.y/2 - corner_cir_offset_y) +`" r="`+corner_radius+`" fill="green" clip-path="url(#q2)" ></circle>
+      <circle cx="`+ (frame.x/2 + corner_cir_offset_x) +`" cy="`+ (frame.y/2 + corner_cir_offset_y) +`" r="`+corner_radius+`" fill="green" clip-path="url(#q3)" ></circle>
+      <circle cx="`+ (frame.x/2 - corner_cir_offset_x) +`" cy="`+ (frame.y/2 + corner_cir_offset_y) +`" r="`+corner_radius+`" fill="green" clip-path="url(#q4)" ></circle>
+      <circle cx="`+ (frame.x/2-side_cir_offset) +`" cy="`+( frame.y/2) +`"   r="`+side_radius+`" fill="red" ></circle>
+      <circle cx="`+ (frame.x/2+side_cir_offset) +`" cy="`+( frame.y/2) +`"   r="`+side_radius+`" fill="red" ></circle>
+      <circle cx="`+ (frame.x/2) +`"   cy="`+ (frame.y/2 - top_cir_offset) + `" r="`+top_radius+`" fill="red" ></circle>
+      <circle cx="`+ (frame.x/2) +`"   cy="`+ (frame.y/2 + top_cir_offset) + `" r="`+top_radius+`" fill="red" ></circle>
+      <rect width="`+workpiece.x+`" height="`+workpiece.y+`" x="`+(frame.x/2 - workpiece.x/2)+`" y="`+(frame.y/2 - workpiece.y/2)+`" fill="transparent" stroke="black" stroke-width="1" /> `;
+    document.getElementById("frame_box").innerHTML = frame_graph;
+  }
+
+  function update_x() {
+    // workpiece x size was just update, auto-size Y to the largest matching size
+    workpiece.x = parseFloat(document.getElementById("w_x").value);
+    y=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.x/2+corner_cir_offset_x)*(workpiece.x/2+corner_cir_offset_x))))-corner_cir_offset_y)*2;
+    if ((y + top_offset *2 > parseFloat(frame.y)) && (document.getElementById("safe_mode").checked == true)) {
+      y=frame.y-2*top_offset;
+      document.getElementById("debug").innerHTML = "calculated workpiece height: "+Math.round(y*100)/100+" exceeds max that will work, reducing to max";
+    }
+    workpiece.y=Math.round(y*100)/100;
+    document.getElementById("w_y").value = workpiece.y;
+    update();
+  }
+
+  function update_y() {
+    // workpiece y size was just update, auto-size X to the largest matching size
+    workpiece.y = parseFloat(document.getElementById("w_y").value);
+    x=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.y/2+corner_cir_offset_y)*(workpiece.y/2+corner_cir_offset_y))))-corner_cir_offset_x)*2;
+    if ((x + side_offset *2 > parseFloat(frame.x)) && (document.getElementById("safe_mode").checked == true)) {
+      x=frame.x-2*side_offset;
+      document.getElementById("debug").innerHTML = "calculated workpiece width: "+Math.round(x*100)/100+" exceeds max that will work, reducing to max";
+    }
+    workpiece.x=Math.round(x*100)/100;
+    document.getElementById("w_x").value = workpiece.x;
+    update();
+  }
+  </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+</head>
+
+<body onload="init()">
+
+  <h1>Maslow cutting area for <span id="frame_x" ></span> x <span id="frame_y" ></span>  frame</h1>
+  Frame Size: 
+  <input type="text" id="f_x" onchange="update()" />
+  <input type="text" id="f_y" onchange="update()" />
+  <br/>
+  <span id="max_workpiece" ></span><br/>
+  <input type="checkbox" name="safe_mode" id="safe_mode" checked /><label for"safe_mode"> Restrict workpiece size to cuttable area</label><br/>
+  Workpiece Size:
+  <input type="text" id="w_x" onchange="update_x()" />
+  <input type="text" id="w_y" onchange="update_y()" />
+  <br/>
+  Limiting angles:
+  <select id="angle_option" onchange="update()" >
+  </select>
+  <span id="angles" ></span>
+  <br/>
+  <span id="debug" ></span>
+  <br/>
+  <div class="parentContainer">
+  <svg id="frame_box" width="100%" height="100%" preserveAspectRato="XMidYMid meet" xmlns="http://www.w3.org/2000/svg" />
+  </div>
+</body>
+</html>"									
+
+
+
