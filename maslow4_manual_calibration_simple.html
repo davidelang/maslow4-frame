@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script>
+// Written by David Lang david@lang.hm Free for anyone to copy and use for any purpose
+    var frame = { x:3048, y:2440, mid_x:1524, mid_y:1220 };
+    var anchor = { blx:0, bl: {x:0, y:0}, br:{ x:frame.x, y:0}, tl:{ x:0, y:frame.y }, tr:{ x:frame.x, y:frame.y}};
+    var measurements = { bl_br : frame.x, tl_tr: frame.x, bl_tl: frame.y, br_tr:frame.y, bl_tr: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)), tl_br: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)), calc_tl_br: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)) };
+
+  function init() {
+    document.getElementById('a_bl_x').defaultValue = anchor.bl.x;
+    document.getElementById('a_bl_y').defaultValue = anchor.bl.y;
+    document.getElementById('a_br_x').defaultValue = anchor.br.x;
+    document.getElementById('a_br_y').defaultValue = anchor.br.y;
+    document.getElementById('a_tl_x').defaultValue = anchor.tl.x;
+    document.getElementById('a_tl_y').defaultValue = anchor.tl.y;
+    document.getElementById('a_tr_x').defaultValue = anchor.tr.x;
+    document.getElementById('a_tr_y').defaultValue = anchor.tr.y;
+    document.getElementById('m_bl_br').defaultValue = measurements.bl_br;
+    document.getElementById('m_tl_tr').defaultValue = measurements.tl_tr;
+    document.getElementById('m_bl_tl').defaultValue = measurements.bl_tl;
+    document.getElementById('m_br_tr').defaultValue = measurements.br_tr;
+    document.getElementById('m_bl_tr').defaultValue = measurements.bl_tr;
+    document.getElementById('m_tl_br').defaultValue = measurements.tl_br;
+    document.getElementById('m_tl_br_calc').defaultValue = measurements.calc_tl_br;
+    update();
+  }
+
+  function update() {
+   // set the frame size
+    measurements.bl_br = parseFloat(document.getElementById("m_bl_br").value);
+    measurements.tl_tr = parseFloat(document.getElementById("m_tl_tr").value);
+    measurements.bl_tl = parseFloat(document.getElementById("m_bl_tl").value);
+    measurements.br_tr = parseFloat(document.getElementById("m_br_tr").value);
+    measurements.bl_tr = parseFloat(document.getElementById("m_bl_tr").value);
+    measurements.tl_br = parseFloat(document.getElementById("m_tl_br").value);
+    // calculate anchor points https://stackoverflow.com/questions/56427300/how-to-find-the-third-vertices-of-a-triangle-when-lengths-are-unequal
+    anchor.br.x = measurements.bl_br;
+    k=(measurements.bl_br*measurements.bl_br + measurements.bl_tr*measurements.bl_tr - measurements.br_tr*measurements.br_tr)/(2*measurements.bl_br);
+    h=Math.sqrt(measurements.bl_tr*measurements.bl_tr - k*k);
+    anchor.tr.x = (k/measurements.bl_br)*(measurements.bl_br);
+    anchor.tr.y = (h/measurements.bl_br)*(measurements.bl_br);
+    k=(measurements.bl_tr*measurements.bl_tr + measurements.bl_tl*measurements.bl_tl - measurements.tl_tr*measurements.tl_tr)/(2*measurements.bl_tr);
+    h=Math.sqrt(measurements.bl_tl*measurements.bl_tl - k*k);
+    anchor.tl.x = (k/measurements.bl_tr) * anchor.tr.x - (h/measurements.bl_tr) * anchor.tr.y;
+    anchor.tl.y = (k/measurements.bl_tr) * anchor.tr.y + (h/measurements.bl_tr) * anchor.tr.x;
+    measurements.calc_tl_br = Math.sqrt((anchor.br.x-anchor.tl.x)*(anchor.br.x-anchor.tl.x) + anchor.tl.y*anchor.tl.y); 
+    document.getElementById("m_tl_br_calc").innerHTML = " Calculated tl to br: " + (Math.round(measurements.calc_tl_br*100)/100) + " Error= " + (Math.round((measurements.tl_br - measurements.calc_tl_br)*100)/100);
+	    
+    document.getElementById("a_bl_x").innerHTML = "Maslow_blX: " + anchor.bl.x;
+    document.getElementById("a_bl_y").innerHTML = "Maslow_blY: " + anchor.bl.y;
+    document.getElementById("a_br_x").innerHTML = "Maslow_brX: " + anchor.br.x;
+    document.getElementById("a_br_y").innerHTML = "Maslow_brY: " + anchor.br.y;
+    document.getElementById("a_tl_x").innerHTML = "Maslow_tlX: " + anchor.tl.x;
+    document.getElementById("a_tl_y").innerHTML = "Maslow_tlY: " + anchor.tl.y;
+    document.getElementById("a_tr_x").innerHTML = "Maslow_trX: " + anchor.tr.x;
+    document.getElementById("a_tr_y").innerHTML = "Maslow_trY: " + anchor.tr.y;
+  }
+  </script>
+</head>
+
+<body onload="init()">
+
+  <h1>Calculate Anchor locations from frame mesurements</h1>
+  This uses top, bottom, sides, and bl to tr measurements to calculate the anchor locations, then compares the measured tl to br measurement with what is calculated from the other measurements to give an estimation of how accurate the results are.
+  <h3>Measurements</h3>
+  Bottom:
+  <input type="text" id="m_bl_br" onchange="update()" />
+  Top:
+  <input type="text" id="m_tl_tr" onchange="update()" />
+  Left:
+  <input type="text" id="m_bl_tl" onchange="update()" />
+  Right:
+  <input type="text" id="m_br_tr" onchange="update()" />
+  Bottom Left to Top Right:
+  <input type="text" id="m_bl_tr" onchange="update()" />
+  Top Left to Bottom Right:
+  <input type="text" id="m_tl_br" onchange="update()" />
+  <span id="m_tl_br_calc"></span>
+  <h3>Anchor locations:</h3>
+  <span id="a_bl_x"></span>
+  <br/>
+  <span id="a_bl_y"></span>
+  <br/>
+  <span id="a_br_x"></span>
+  <br/>
+  <span id="a_br_y"></span>
+  <br/>
+  <span id="a_tl_x"></span>
+  <br/>
+  <span id="a_tl_y"></span>
+  <br/>
+  <span id="a_tr_x"></span>
+  <br/>
+  <span id="a_tr_y"></span>
+</body>
+</html>					
+
+
+
