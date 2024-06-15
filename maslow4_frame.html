@@ -2,27 +2,19 @@
 <html>
 
 <head>
-   <style>
-      .parentContainer {
-         width: 100%;
-         height: 100%;
-      }
-      svg {
-         width: 100%;
-         height: 100%;
-      }
-   </style>
   <script>
 // Written by David Lang david@lang.hm Free for anyone to copy and use for any purpose
 // This is designed to show the area that a stock Maslow 4 (maslowcnc.com) can reach from a given set of anchor points.
-      var frame = { x:3048, y:2440, mid_x:1524, mid_y:1220 };
-      var workpiece = { x:2440, y:1220 };
-      var angles = [
-        { name:"from Bar", min_top:40, min_side:40, min_corner:130 },
-        { name:"from CAD", min_top:38.7, min_side:38.7, min_corner:128.7 },
-        { name:"clipped ears", min_top:27.5, min_side:38.7, min_corner:123.07 },
-        { name:"Custom", min_top:40, min_side:40, min_corner:130 }
+    var frame = { x:3048, y:2440, mid_x:1524, mid_y:1220 };
+    var workpiece = { x:2440, y:1220 };
+    var angles = [
+      { name:"from Bar", min_top:40, min_side:40, min_corner:130 },
+      { name:"from CAD", min_top:38.7, min_side:38.7, min_corner:128.7 },
+      { name:"clipped ears", min_top:27.5, min_side:38.7, min_corner:123.07 },
+      { name:"Custom", min_top:40, min_side:40, min_corner:130 }
     ];
+    var gridsize=100;
+    var strokewidth=1;
 
   function init() {
     document.getElementById('f_x').defaultValue = frame.x;
@@ -50,10 +42,8 @@
     root.viewBox.baseVal.height = frame.y;
     frame.x = parseFloat(document.getElementById("f_x").value);
     frame.y = parseFloat(document.getElementById("f_y").value);
-    workpiece.x = parseFloat(document.getElementById("w_x").value);
-    workpiece.y = parseFloat(document.getElementById("w_y").value);
-    document.getElementById('frame_box').setAttribute("width", frame.x);
-    document.getElementById('frame_box').setAttribute("height", frame.y);
+    //document.getElementById('frame_box').setAttribute("width", frame.x);
+    //document.getElementById('frame_box').setAttribute("height", frame.y);
     document.getElementById('frame_x').innerHTML = frame.x;
     document.getElementById('frame_y').innerHTML = frame.y;
     // calculate what areas can and can't be reached
@@ -76,7 +66,7 @@
     top_cir_offset = frame.y/2 - top_offset + top_radius;
     corner_cir_offset_x = Math.cos(frame_diag_angle*Math.PI/180)*(corner_radius - corner_triangle_height);
     corner_cir_offset_y = Math.sin(frame_diag_angle*Math.PI/180)*(corner_radius - corner_triangle_height);
-    document.getElementById("max_workpiece").innerHTML = "Mas safe width: "+Math.round((frame.x-2*side_offset)*100)/100+ "   Max safe height: " + Math.round((frame.y-2*top_offset)*100)/100 +"  it is probably not possible to hit both max sizes at the same time"
+    document.getElementById("max_workpiece").innerHTML = "Max safe width: "+Math.round((frame.x-2*side_offset)*100)/100+ "   Max safe height: " + Math.round((frame.y-2*top_offset)*100)/100 +"  it is probably not possible to hit both max sizes at the same time"
     //plot the graph, first plot each quadrent to check what area is reachable with the min corner angle from opposite corners
     // then plot the 4 areas that are not reachable on the edges due to the arms being limited in how wide they can go.
     var frame_graph = `
@@ -100,33 +90,56 @@
       <circle cx="`+ (frame.x/2+side_cir_offset) +`" cy="`+( frame.y/2) +`"   r="`+side_radius+`" fill="red" ></circle>
       <circle cx="`+ (frame.x/2) +`"   cy="`+ (frame.y/2 - top_cir_offset) + `" r="`+top_radius+`" fill="red" ></circle>
       <circle cx="`+ (frame.x/2) +`"   cy="`+ (frame.y/2 + top_cir_offset) + `" r="`+top_radius+`" fill="red" ></circle>
-      <rect width="`+workpiece.x+`" height="`+workpiece.y+`" x="`+(frame.x/2 - workpiece.x/2)+`" y="`+(frame.y/2 - workpiece.y/2)+`" fill="transparent" stroke="black" stroke-width="1" /> `;
+      `;
+      if (frame.x > 300) { gridsize=100; strokewidth=1 } else { gridsize=12;strokewidth=.2};
+      for ( i=((frame.y/2)%gridsize); i < frame.y; i += gridsize ) {
+        frame_graph += `
+          <line x1="0" y1="`+ i +`" x2="`+frame.x+`" y2="`+ i +`" stroke-width="`+strokewidth+`" stroke="yellow"/>"
+        `;
+      }
+      for ( i=((frame.x/2)%gridsize); i < frame.x; i += gridsize ) {
+        frame_graph += `
+          <line y1="0" x1="`+ i +`" y2="`+frame.y+`" x2="`+ i +`" stroke-width="`+strokewidth+`" stroke="yellow"/>"
+        `;
+      }
+      frame_graph += `
+      <rect width="`+workpiece.x+`" height="`+workpiece.y+`" x="`+(frame.x/2 - workpiece.x/2)+`" y="`+(frame.y/2 - workpiece.y/2)+`" fill="transparent" stroke="black" stroke-width="1" /> 
+      `;
     document.getElementById("frame_box").innerHTML = frame_graph;
+    document.getElementById("belt_length").innerHTML = Math.round((Math.sqrt(((frame.x+workpiece.x)/2) * ((frame.x+workpiece.x)/2) + ((frame.y+workpiece.y)/2) * ((frame.y+workpiece.y)/2))*100)/100);
   }
 
   function update_x() {
-    // workpiece x size was just update, auto-size Y to the largest matching size
+    document.getElementById("debug").innerHTML = "";
     workpiece.x = parseFloat(document.getElementById("w_x").value);
-    y=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.x/2+corner_cir_offset_x)*(workpiece.x/2+corner_cir_offset_x))))-corner_cir_offset_y)*2;
-    if ((y + top_offset *2 > parseFloat(frame.y)) && (document.getElementById("safe_mode").checked == true)) {
-      y=frame.y-2*top_offset;
-      document.getElementById("debug").innerHTML = "calculated workpiece height: "+Math.round(y*100)/100+" exceeds max that will work, reducing to max";
+    workpiece.y = parseFloat(document.getElementById("w_y").value);
+    if (document.getElementById("safe_mode").checked == true) {
+    // workpiece x size was just update, auto-size Y to the largest matching size
+      y=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.x/2+corner_cir_offset_x)*(workpiece.x/2+corner_cir_offset_x))))-corner_cir_offset_y)*2;
+      if (y + top_offset *2 > parseFloat(frame.y)) {
+        y=frame.y-2*top_offset;
+        document.getElementById("debug").innerHTML = "calculated workpiece height: "+Math.round(y*100)/100+" exceeds max that will work, reducing to max";
+      }
+      workpiece.y=Math.round(y*100)/100;
+      document.getElementById("w_y").value = workpiece.y;
     }
-    workpiece.y=Math.round(y*100)/100;
-    document.getElementById("w_y").value = workpiece.y;
     update();
   }
 
   function update_y() {
-    // workpiece y size was just update, auto-size X to the largest matching size
+    document.getElementById("debug").innerHTML = "";
+    workpiece.x = parseFloat(document.getElementById("w_x").value);
     workpiece.y = parseFloat(document.getElementById("w_y").value);
-    x=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.y/2+corner_cir_offset_y)*(workpiece.y/2+corner_cir_offset_y))))-corner_cir_offset_x)*2;
-    if ((x + side_offset *2 > parseFloat(frame.x)) && (document.getElementById("safe_mode").checked == true)) {
-      x=frame.x-2*side_offset;
-      document.getElementById("debug").innerHTML = "calculated workpiece width: "+Math.round(x*100)/100+" exceeds max that will work, reducing to max";
+    if  (document.getElementById("safe_mode").checked == true) {
+    // workpiece y size was just update, auto-size X to the largest matching size
+      x=(Math.sqrt(Math.abs(corner_radius*corner_radius -((workpiece.y/2+corner_cir_offset_y)*(workpiece.y/2+corner_cir_offset_y))))-corner_cir_offset_x)*2;
+      if (x + side_offset *2 > parseFloat(frame.x)) {
+        x=frame.x-2*side_offset;
+        document.getElementById("debug").innerHTML = "calculated workpiece width: "+Math.round(x*100)/100+" exceeds max that will work, reducing to max";
+      }
+      workpiece.x=Math.round(x*100)/100;
+      document.getElementById("w_x").value = workpiece.x;
     }
-    workpiece.x=Math.round(x*100)/100;
-    document.getElementById("w_x").value = workpiece.x;
     update();
   }
   </script>
@@ -135,13 +148,13 @@
 
 <body onload="init()">
 
-  <h1>Maslow cutting area for <span id="frame_x" ></span> x <span id="frame_y" ></span>  frame</h1>
+  <h1>Maslow undistorted cutting area <span id="frame_x" ></span> x <span id="frame_y" ></span>  frame</h1>
   Frame Size: 
   <input type="text" id="f_x" onchange="update()" />
   <input type="text" id="f_y" onchange="update()" />
   <br/>
   <span id="max_workpiece" ></span><br/>
-  <input type="checkbox" name="safe_mode" id="safe_mode" checked /><label for"safe_mode"> Restrict workpiece size to cuttable area</label><br/>
+  <input type="checkbox" name="safe_mode" id="safe_mode" checked /><label for"safe_mode"> Auto calculate workpiece X when you set Y (or Y when you set X) to keep inside the safe cutting area</label><br/>
   Workpiece Size:
   <input type="text" id="w_x" onchange="update_x()" />
   <input type="text" id="w_y" onchange="update_y()" />
@@ -151,10 +164,13 @@
   </select>
   <span id="angles" ></span>
   <br/>
+  Belt length required: <span id="belt_length" ></span>
+  <br/>
   <span id="debug" ></span>
   <br/>
+  Grid is every 12 in (for frame.x less than 300) or every 100mm (for frame.x greater than 300) and is centered on the frame<br/>
   <div class="parentContainer">
-  <svg id="frame_box" width="100%" height="100%" preserveAspectRato="XMidYMid meet" xmlns="http://www.w3.org/2000/svg" />
+  <svg id="frame_box" width="100%" height="100%" viewbox="0 0 100 100" preserveAspectRato="XMidYMid meet" xmlns="http://www.w3.org/2000/svg" />
   </div>
 </body>
 </html>"									
