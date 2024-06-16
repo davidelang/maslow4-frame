@@ -6,12 +6,14 @@
 // Written by David Lang david@lang.hm Free for anyone to copy and use for any purpose
 // This is designed to show the area that a stock Maslow 4 (maslowcnc.com) can reach from a given set of anchor points.
     var frame = { x:3048, y:2440, mid_x:1524, mid_y:1220 };
+    var anchor = { blx:0, bl: {x:0, y:0}, br:{ x:frame.x, y:0}, tl:{ x:0, y:frame.y }, tr:{ x:frame.x, y:frame.y}};
+    var measurements = { bl_br : frame.x, tl_tr: frame.x, bl_tl: frame.y, br_tr:frame.y, bl_tr: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)), tl_br: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)), calc_tl_br: (Math.sqrt(frame.x*frame.x+frame.y*frame.y)) };
     var workpiece = { x:2440, y:1220 };
     var angles = [
-      { name:"from Bar", min_top:40, min_side:40, min_corner:130 },
-      { name:"from CAD", min_top:38.7, min_side:38.7, min_corner:128.7 },
-      { name:"clipped ears", min_top:27.5, min_side:38.7, min_corner:123.07 },
-      { name:"Custom", min_top:40, min_side:40, min_corner:130 }
+      { name:"from Bar", min_top:20, min_side:20, min_corner:130 },
+      { name:"from CAD", min_top:19.35, min_side:19.35, min_corner:128.7 },
+      { name:"clipped ears", min_top:13.75, min_side:19.35, min_corner:123.07 },
+      { name:"Custom", min_top:20, min_side:20, min_corner:130 }
     ];
     var gridsize=100;
     var strokewidth=1;
@@ -29,6 +31,24 @@
       el.value = i;
       select.appendChild(el);
     }
+    document.getElementById('a_bl_x').defaultValue = anchor.bl.x;
+    document.getElementById('a_bl_y').defaultValue = anchor.bl.y;
+    document.getElementById('a_br_x').defaultValue = anchor.br.x;
+    document.getElementById('a_br_y').defaultValue = anchor.br.y;
+    document.getElementById('a_tl_x').defaultValue = anchor.tl.x;
+    document.getElementById('a_tl_y').defaultValue = anchor.tl.y;
+    document.getElementById('a_tr_x').defaultValue = anchor.tr.x;
+    document.getElementById('a_tr_y').defaultValue = anchor.tr.y;
+    document.getElementById('m_bl_br').defaultValue = measurements.bl_br;
+    document.getElementById('m_tl_tr').defaultValue = measurements.tl_tr;
+    document.getElementById('m_bl_tl').defaultValue = measurements.bl_tl;
+    document.getElementById('m_br_tr').defaultValue = measurements.br_tr;
+    document.getElementById('m_bl_tr').defaultValue = measurements.bl_tr;
+    document.getElementById('m_tl_br').defaultValue = measurements.tl_br;
+    document.getElementById('m_tl_br_calc').defaultValue = measurements.calc_tl_br;
+    document.getElementById('cust_top_angle').defaultValue = angles[3].min_top;
+    document.getElementById('cust_side_angle').defaultValue = angles[3].min_side;
+    document.getElementById('cust_corner_angle').defaultValue = angles[3].min_corner;
     //select.value=0;
     update();
   }
@@ -42,15 +62,45 @@
     root.viewBox.baseVal.height = frame.y;
     frame.x = parseFloat(document.getElementById("f_x").value);
     frame.y = parseFloat(document.getElementById("f_y").value);
+    measurements.bl_br = parseFloat(document.getElementById("m_bl_br").value);
+    measurements.tl_tr = parseFloat(document.getElementById("m_tl_tr").value);
+    measurements.bl_tl = parseFloat(document.getElementById("m_bl_tl").value);
+    measurements.br_tr = parseFloat(document.getElementById("m_br_tr").value);
+    measurements.bl_tr = parseFloat(document.getElementById("m_bl_tr").value);
+    measurements.tl_br = parseFloat(document.getElementById("m_tl_br").value);
+    angles[3].min_top = parseFloat(document.getElementById("cust_top_angle").value);
+    angles[3].min_side = parseFloat(document.getElementById("cust_side_angle").value);
+    angles[3].min_corner = parseFloat(document.getElementById("cust_corner_angle").value);
+    // calculate anchor points https://stackoverflow.com/questions/56427300/how-to-find-the-third-vertices-of-a-triangle-when-lengths-are-unequal
+    anchor.br.x = measurements.bl_br;
+    k=(measurements.bl_br*measurements.bl_br + measurements.bl_tr*measurements.bl_tr - measurements.br_tr*measurements.br_tr)/(2*measurements.bl_br);
+    h=Math.sqrt(measurements.bl_tr*measurements.bl_tr - k*k);
+    anchor.tr.x = (k/measurements.bl_br)*(measurements.bl_br);
+    anchor.tr.y = (h/measurements.bl_br)*(measurements.bl_br);
+    k=(measurements.bl_tr*measurements.bl_tr + measurements.bl_tl*measurements.bl_tl - measurements.tl_tr*measurements.tl_tr)/(2*measurements.bl_tr);
+    h=Math.sqrt(measurements.bl_tl*measurements.bl_tl - k*k);
+    anchor.tl.x = (k/measurements.bl_tr) * anchor.tr.x - (h/measurements.bl_tr) * anchor.tr.y;
+    anchor.tl.y = (k/measurements.bl_tr) * anchor.tr.y + (h/measurements.bl_tr) * anchor.tr.x;
+    measurements.calc_tl_br = Math.sqrt((anchor.br.x-anchor.tl.x)*(anchor.br.x-anchor.tl.x) + anchor.tl.y*anchor.tl.y); 
+    document.getElementById("m_tl_br_calc").innerHTML = " Calculated tl to br: " + (Math.round(measurements.calc_tl_br*100)/100) + " Error= " + (Math.round((measurements.tl_br - measurements.calc_tl_br)*100)/100);
+	    
     //document.getElementById('frame_box').setAttribute("width", frame.x);
     //document.getElementById('frame_box').setAttribute("height", frame.y);
     document.getElementById('frame_x').innerHTML = frame.x;
     document.getElementById('frame_y').innerHTML = frame.y;
     // calculate what areas can and can't be reached
-    min_top =angles[select.value].min_top/2;
-    min_side =angles[select.value].min_side/2;
+    min_top =angles[select.value].min_top;
+    min_side =angles[select.value].min_side;
     min_corner =angles[select.value].min_corner;
     document.getElementById("angles").innerHTML = "top " + min_top + "  side " +min_side+ "  corner "+min_corner;
+    document.getElementById("a_bl_x").innerHTML = "Maslow_blX: " + anchor.bl.x;
+    document.getElementById("a_bl_y").innerHTML = "Maslow_blY: " + anchor.bl.y;
+    document.getElementById("a_br_x").innerHTML = "Maslow_brX: " + anchor.br.x;
+    document.getElementById("a_br_y").innerHTML = "Maslow_brY: " + anchor.br.y;
+    document.getElementById("a_tl_x").innerHTML = "Maslow_tlX: " + anchor.tl.x;
+    document.getElementById("a_tl_y").innerHTML = "Maslow_tlY: " + anchor.tl.y;
+    document.getElementById("a_tr_x").innerHTML = "Maslow_trX: " + anchor.tr.x;
+    document.getElementById("a_tr_y").innerHTML = "Maslow_trY: " + anchor.tr.y;
     frame_diag=Math.sqrt(frame.x*frame.x+frame.y*frame.y);
     frame_diag_angle = Math.atan(frame.x/frame.y)*180/Math.PI;
     side_offset = Math.tan(min_top*Math.PI/180)*frame.y/2;
@@ -148,11 +198,46 @@
 
 <body onload="init()">
 
-  <h1>Maslow undistorted cutting area <span id="frame_x" ></span> x <span id="frame_y" ></span>  frame</h1>
-  Frame Size: 
+  <span><h1>Maslow undistorted cutting area <span id="frame_x" ></span> x <span id="frame_y" ></span>  frame</h1>
   <input type="text" id="f_x" onchange="update()" />
   <input type="text" id="f_y" onchange="update()" />
   <br/>
+  </span>
+  <span hidden>
+  <h1>Calculate Anchor locations from frame mesurements</h1>
+  This uses top, bottom, sides, and bl to tr measurements to calculate the anchor locations, then compares the measured tl to br measurement with what is calculated from the other measurements to give an estimation of how accurate the results are.
+  <h3>Measurements</h3>
+  Bottom:
+  <input type="text" id="m_bl_br" onchange="update()" />
+  Top:
+  <input type="text" id="m_tl_tr" onchange="update()" />
+  Left:
+  <input type="text" id="m_bl_tl" onchange="update()" />
+  Right:
+  <input type="text" id="m_br_tr" onchange="update()" />
+  Bottom Left to Top Right:
+  <input type="text" id="m_bl_tr" onchange="update()" />
+  Top Left to Bottom Right:
+  <input type="text" id="m_tl_br" onchange="update()" />
+  <span id="m_tl_br_calc"></span>
+  <h3>Anchor locations:</h3>
+  <span id="a_bl_x"></span>
+  <br/>
+  <span id="a_bl_y"></span>
+  <br/>
+  <span id="a_br_x"></span>
+  <br/>
+  <span id="a_br_y"></span>
+  <br/>
+  <span id="a_tl_x"></span>
+  <br/>
+  <span id="a_tl_y"></span>
+  <br/>
+  <span id="a_tr_x"></span>
+  <br/>
+  <span id="a_tr_y"></span>
+  </span>
+  <span>
   <span id="max_workpiece" ></span><br/>
   <input type="checkbox" name="safe_mode" id="safe_mode" checked /><label for"safe_mode"> Auto calculate workpiece X when you set Y (or Y when you set X) to keep inside the safe cutting area</label><br/>
   Workpiece Size:
@@ -163,6 +248,9 @@
   <select id="angle_option" onchange="update()" >
   </select>
   <span id="angles" ></span>
+  <br/>How close can the belt get to vertical:<input type="text" id="cust_top_angle" onchange="update()" />
+  <br/>How close can the belt get to horizontal:<input type="text" id="cust_side_angle" onchange="update()" />
+  <br/>minimum angle between opposite belts:<input type="text" id="cust_corner_angle" onchange="update()" />
   <br/>
   Belt length required: <span id="belt_length" ></span>
   <br/>
@@ -172,8 +260,9 @@
   <div class="parentContainer">
   <svg id="frame_box" width="100%" height="100%" viewbox="0 0 100 100" preserveAspectRato="XMidYMid meet" xmlns="http://www.w3.org/2000/svg" />
   </div>
+  </span>
 </body>
-</html>"									
+</html>					
 
 
 
